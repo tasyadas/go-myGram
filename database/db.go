@@ -2,7 +2,6 @@ package database
 
 import (
 	"fmt"
-	"go-jwt/models"
 	"go-myGram/models"
 	"log"
 	"os"
@@ -13,11 +12,6 @@ import (
 )
 
 var (
-	// host     = "localhost"
-	// user     = "postgres"
-	// password = "postgres"
-	// dbPort   = "5432"
-	// dbname   = "simple-api"
 	db  *gorm.DB
 	err error
 )
