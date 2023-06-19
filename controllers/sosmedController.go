@@ -3,9 +3,12 @@ package controllers
 import (
 	"fmt"
 	"go-myGram/database"
+	"go-myGram/helpers"
 	"go-myGram/models"
 	"net/http"
+	"strconv"
 
+	"github.com/dgrijalva/jwt-go"
 	"github.com/gin-gonic/gin"
 )
 
@@ -55,13 +58,21 @@ func GetOneSosmed(ctx *gin.Context) {
 
 func CreateSocialMedia(ctx *gin.Context) {
 	db := database.GetDB()
-	var sosmed models.Sosmed
+	userData := ctx.MustGet("userData").(jwt.MapClaims)
+	contentType := helpers.GetContentType(ctx)
 
-	if err := ctx.ShouldBindJSON(&sosmed); err != nil {
-		ctx.AbortWithError(http.StatusBadRequest, err)
+	Sosmed := models.Sosmed{}
+	userID := uint(userData["id"].(float64))
+
+	if contentType == appJSON {
+		ctx.ShouldBindJSON(&Sosmed)
+	} else {
+		ctx.ShouldBind(&Sosmed)
 	}
 
-	err := db.Debug().Create(&sosmed).Error
+	Sosmed.UserID = userID
+
+	err := db.Debug().Create(&Sosmed).Error
 
 	if err != nil {
 		ctx.JSON(http.StatusBadRequest, gin.H{
@@ -72,7 +83,7 @@ func CreateSocialMedia(ctx *gin.Context) {
 	}
 
 	ctx.JSON(http.StatusCreated, gin.H{
-		"sosmed": sosmed,
+		"sosmed": Sosmed,
 		"code":   200,
 	})
 }
@@ -80,11 +91,11 @@ func CreateSocialMedia(ctx *gin.Context) {
 func UpdateSocialMedia(ctx *gin.Context) {
 	db := database.GetDB()
 	var sosmed models.Sosmed
-	id := ctx.Query("id")
+	id, _ := strconv.Atoi(ctx.Param("socmed_id"))
 
 	if err := db.First(&models.Sosmed{}, "id = ?", id).Error; err != nil {
 		ctx.AbortWithStatusJSON(http.StatusNotFound, gin.H{
-			"result": fmt.Sprintf("gagal Update order Id %v tidak di temukan", id),
+			"result": fmt.Sprintf("Gagal Update Socmed Id %v tidak di temukan", id),
 		})
 		return
 	}
@@ -113,11 +124,11 @@ func DeleteSocialMedia(ctx *gin.Context) {
 	db := database.GetDB()
 	sosmed := models.Sosmed{}
 
-	id := ctx.Query("id")
+	id, _ := strconv.Atoi(ctx.Param("socmed_id"))
 
-	if err := db.First(&sosmed, "order_id = ?", id).Error; err != nil {
+	if err := db.First(&sosmed, "id = ?", id).Error; err != nil {
 		ctx.AbortWithStatusJSON(http.StatusNotFound, gin.H{
-			"result": fmt.Sprintf("Gagal menghapus sosmed id %v tidak di temukan", id),
+			"result": fmt.Sprintf("Gagal menghapus socmed id %v tidak di temukan", id),
 		})
 		return
 	}
@@ -131,7 +142,7 @@ func DeleteSocialMedia(ctx *gin.Context) {
 	}
 
 	ctx.JSON(http.StatusOK, gin.H{
-		"message": fmt.Sprintf("sosmed dengan id %v berhasil dihapus", id),
+		"message": fmt.Sprintf("socmed dengan id %v berhasil dihapus", id),
 		"code":    200,
 	})
 }

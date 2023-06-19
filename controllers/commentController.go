@@ -3,9 +3,12 @@ package controllers
 import (
 	"fmt"
 	"go-myGram/database"
+	"go-myGram/helpers"
 	"go-myGram/models"
 	"net/http"
+	"strconv"
 
+	"github.com/dgrijalva/jwt-go"
 	"github.com/gin-gonic/gin"
 )
 
@@ -55,13 +58,21 @@ func GetOneComment(ctx *gin.Context) {
 
 func CreateComment(ctx *gin.Context) {
 	db := database.GetDB()
-	var comment models.Comment
+	userData := ctx.MustGet("userData").(jwt.MapClaims)
+	contentType := helpers.GetContentType(ctx)
 
-	if err := ctx.ShouldBindJSON(&comment); err != nil {
-		ctx.AbortWithError(http.StatusBadRequest, err)
+	Comment := models.Comment{}
+	userID := uint(userData["id"].(float64))
+
+	if contentType == appJSON {
+		ctx.ShouldBindJSON(&Comment)
+	} else {
+		ctx.ShouldBind(&Comment)
 	}
 
-	err := db.Debug().Create(&comment).Error
+	Comment.UserID = userID
+
+	err := db.Debug().Create(&Comment).Error
 
 	if err != nil {
 		ctx.JSON(http.StatusBadRequest, gin.H{
@@ -72,7 +83,7 @@ func CreateComment(ctx *gin.Context) {
 	}
 
 	ctx.JSON(http.StatusCreated, gin.H{
-		"comment": comment,
+		"comment": Comment,
 		"code":    200,
 	})
 }
@@ -80,11 +91,11 @@ func CreateComment(ctx *gin.Context) {
 func UpdateComment(ctx *gin.Context) {
 	db := database.GetDB()
 	var comment models.Comment
-	id := ctx.Query("id")
+	id, _ := strconv.Atoi(ctx.Param("comment_id"))
 
 	if err := db.First(&models.Comment{}, "id = ?", id).Error; err != nil {
 		ctx.AbortWithStatusJSON(http.StatusNotFound, gin.H{
-			"result": fmt.Sprintf("gagal Update order Id %v tidak di temukan", id),
+			"result": fmt.Sprintf("gagal Update comment Id %v tidak di temukan", id),
 		})
 		return
 	}
@@ -113,9 +124,9 @@ func DeleteComment(ctx *gin.Context) {
 	db := database.GetDB()
 	comment := models.Comment{}
 
-	id := ctx.Query("id")
+	id, _ := strconv.Atoi(ctx.Param("comment_id"))
 
-	if err := db.First(&comment, "order_id = ?", id).Error; err != nil {
+	if err := db.First(&comment, "id = ?", id).Error; err != nil {
 		ctx.AbortWithStatusJSON(http.StatusNotFound, gin.H{
 			"result": fmt.Sprintf("Gagal menghapus comment id %v tidak di temukan", id),
 		})

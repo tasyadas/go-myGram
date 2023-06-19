@@ -3,9 +3,12 @@ package controllers
 import (
 	"fmt"
 	"go-myGram/database"
+	"go-myGram/helpers"
 	"go-myGram/models"
 	"net/http"
+	"strconv"
 
+	"github.com/dgrijalva/jwt-go"
 	"github.com/gin-gonic/gin"
 )
 
@@ -55,13 +58,21 @@ func GetOnePhoto(ctx *gin.Context) {
 
 func CreatePhoto(ctx *gin.Context) {
 	db := database.GetDB()
-	var photo models.Photo
+	userData := ctx.MustGet("userData").(jwt.MapClaims)
+	contentType := helpers.GetContentType(ctx)
 
-	if err := ctx.ShouldBindJSON(&photo); err != nil {
-		ctx.AbortWithError(http.StatusBadRequest, err)
+	Photo := models.Photo{}
+	userID := uint(userData["id"].(float64))
+
+	if contentType == appJSON {
+		ctx.ShouldBindJSON(&Photo)
+	} else {
+		ctx.ShouldBind(&Photo)
 	}
 
-	err := db.Debug().Create(&photo).Error
+	Photo.UserID = userID
+
+	err := db.Debug().Create(&Photo).Error
 
 	if err != nil {
 		ctx.JSON(http.StatusBadRequest, gin.H{
@@ -72,7 +83,7 @@ func CreatePhoto(ctx *gin.Context) {
 	}
 
 	ctx.JSON(http.StatusCreated, gin.H{
-		"photo": photo,
+		"photo": Photo,
 		"code":  200,
 	})
 }
@@ -80,11 +91,11 @@ func CreatePhoto(ctx *gin.Context) {
 func UpdatePhoto(ctx *gin.Context) {
 	db := database.GetDB()
 	var photo models.Photo
-	id := ctx.Query("id")
+	id, _ := strconv.Atoi(ctx.Param("photo_id"))
 
 	if err := db.First(&models.Photo{}, "id = ?", id).Error; err != nil {
 		ctx.AbortWithStatusJSON(http.StatusNotFound, gin.H{
-			"result": fmt.Sprintf("gagal Update order Id %v tidak di temukan", id),
+			"result": fmt.Sprintf("gagal Update photo Id %v tidak di temukan", id),
 		})
 		return
 	}
@@ -113,9 +124,9 @@ func DeletePhoto(ctx *gin.Context) {
 	db := database.GetDB()
 	photo := models.Photo{}
 
-	id := ctx.Query("id")
+	id, _ := strconv.Atoi(ctx.Param("photo_id"))
 
-	if err := db.First(&photo, "order_id = ?", id).Error; err != nil {
+	if err := db.First(&photo, "id = ?", id).Error; err != nil {
 		ctx.AbortWithStatusJSON(http.StatusNotFound, gin.H{
 			"result": fmt.Sprintf("Gagal menghapus photo id %v tidak di temukan", id),
 		})
